@@ -5,7 +5,6 @@ import copy
 
 # StopIteration # <-- To stop an iteration inside next
 
-
 def sample_gauss(mean, cov_chol):
     """Sample a gaussian with given mean and covariance square root."""
     return mean + np.dot(cov_chol, np.random.randn(mean.shape[0]))
@@ -152,7 +151,7 @@ class MetropolisHastingsSym(MetropolisHastings, abc.ABC):
             return (proposed_sample, prop_pdf, True)
         else:
             u = np.log(np.random.rand(1)[0])
-            if (u < accept_reject):
+            if u < accept_reject:
                 return (proposed_sample, prop_pdf, True)
             else:
                 return (self.current_sample, self.current_logpdf, False)
@@ -171,6 +170,10 @@ class RandomWalkGauss(MetropolisHastingsSym):
     def propose(self):
         """Generate proposed sample."""
         return sample_gauss(self.current_sample, self.cov_chol)
+
+    def process_new_sample(self, sample, logpdf):
+        """Don't process the sample."""
+        pass
 
 
 class DelayedRejectionGauss(RandomWalkGauss):
@@ -203,7 +206,7 @@ class DelayedRejectionGauss(RandomWalkGauss):
             return (proposed_sample, prop_pdf, True)
         else:
             u = np.log(np.random.rand(1)[0])
-            if (u < accept_reject):
+            if u < accept_reject:
                 return (proposed_sample, prop_pdf, True)
             else:
                 second_proposed_sample = self.propose(1)

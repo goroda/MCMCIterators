@@ -1,14 +1,14 @@
-# SamplingIterators
+# MCMC-I Markov Chain Monte Carlo Iterators
 Iterator-based Markov Chain Monte Carlo Sampling Algorithms
 
 ## Why this package?
 Packages like pymc3, pyro, and stan trap you within their modeling world. Sometimes you just want a quick and easy sampling approach that takes the minimal amount of overhead. This package is created so that all you need to provide is a user made distribution from which you would like to sample. This is just a standard python function that does not trap you into any specific code-base. The algorithms in this package allow you to then create a loop generating samples. You can do whatever you want with the samples. 
 
 The currently implemented algorithms implemented for MCMC
-    - Random Walk Metropolis Hastings (MH)
-    - Adaptive Metropolis (AM)
-    - Delayed Rejection Metropolis Hastings  (DR)
-    - Delayed Rejection Adaptive Metropolis (DRAM) 
+* Random Walk Metropolis Hastings (MH)
+* Adaptive Metropolis (AM)
+* Delayed Rejection Metropolis Hastings  (DR)
+* Delayed Rejection Adaptive Metropolis (DRAM) 
     
     
 ## Example
@@ -70,7 +70,7 @@ This package omes with both a library and some examples. The library must be ins
 
 To run unit tests one can run
 
-   python -m unittest discover
+    python -m unittest discover
 
 from the top level directory.
 
@@ -79,4 +79,3 @@ author: Alex Gorodetsky__
 email:  alex@alexgorodetsky.com  
 license: GPL3  
 copyright (c) 2022, Alex Gorodetsky  
-

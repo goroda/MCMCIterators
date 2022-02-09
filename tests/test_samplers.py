@@ -8,7 +8,7 @@ import scipy.stats as scistats
 # import sys
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../SamplingIterators')))
 
-from SamplingIterators import samplers
+from MCMCIterators import samplers
 
 class TestMonteCarloSampler(unittest.TestCase):
 
