@@ -53,7 +53,11 @@ One can use this iterator in conjuction with any itertools functions. For instan
 
     sampler = itertools.islice(sampler, 100)
     
-One can then initialize a Panda data frame with an iterator.
+One can also extract just the samples, rather than the logpdf values and whether or not it is an accepted sample via
+
+    sampler = itertools.starmap(lambda x, y, z: x, sampler)
+    
+Finally, one could put the samples into a pandas dataframe as follows
 
     df = pd.DataFrame(samples, columns=['x1', 'x2'])
     

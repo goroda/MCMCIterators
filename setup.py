@@ -1,4 +1,4 @@
-"""Setup for Sampling Iterators
+"""Setup for MCMCIterators
 
 setup.py heavily borrowed from 
 https://github.com/pypa/sampleproject
@@ -7,8 +7,9 @@ See:
 https://packaging.python.org/guides/distributing-packages-using-setuptools/
 
 """
-from setuptools import setup, find_packages
 import pathlib
+from setuptools import setup, find_packages
+
 
 here = pathlib.Path(__file__).parent.resolve()
 
@@ -32,5 +33,4 @@ setup(
     # ]
     # keywords='sample,setuptools'
     packages=['MCMCIterators']
-    
 )
