@@ -1,4 +1,4 @@
-# MCMC-I Markov Chain Monte Carlo Iterators
+# MCMC-Iterators Markov Chain Monte Carlo Iterators
 Iterator-based Markov Chain Monte Carlo Sampling Algorithms
 
 ## Why this package?
