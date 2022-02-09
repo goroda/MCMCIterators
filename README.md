@@ -75,7 +75,7 @@ To run unit tests one can run
 from the top level directory.
 
 ## Information
-author: Alex Gorodetsky__
+author: Alex Gorodetsky  
 email:  alex@alexgorodetsky.com  
 license: GPL3  
 copyright (c) 2022, Alex Gorodetsky  
