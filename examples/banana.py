@@ -39,29 +39,53 @@ if __name__ == "__main__":
     # If using the Laplace Approximation
     # x_rand = np.random.randn(2)
     # x0, cov0 = utils.laplace_approx(x_rand, banana)
-    
+
     # Results from Laplace should be close to below
     x0 = np.array([0, -1.0])
     cov0 = np.array([[1.0, 0.9],
                      [0.9, 1.0]])
 
-    nsamples = 100000
+    # Example usage
+    sampler = samplers.RandomWalkGauss(banana, x0, 2*cov0)
 
+    # only consider 10 samples
+    finite_sampler = itertools.islice(sampler, 10)
+    for sample, logpdf, accepted_bool in finite_sampler:
+        print(f"Sample: {sample}")
+        print(f"\t Logpdf: {logpdf}")
+        print(f"\t Accepted? -> {accepted_bool}")
+        print("\n")
+
+    # Comparison of algorithms with all algorithmic options set
     sampler_names = ['MH', 'Adaptive', 'Delayed Rejection', 'DRAM']
     sampler_types = [samplers.RandomWalkGauss(banana, x0, 2*cov0),
                      samplers.AdaptiveMetropolisGauss(banana, x0, 2*cov0,
-                                                      adapt_start=10),
+                                                      adapt_start=10,
+                                                      eps=1e-8,
+                                                      sd=None,
+                                                      interval=1),
                      samplers.DelayedRejectionGauss(banana, x0, 2*cov0,
                                                     level_scale=1e-1),
                      samplers.DelayedRejectionAdaptiveMetropolis(
                          banana, x0, 2*cov0,
                          adapt_start=10,
+                         eps=1e-8,
+                         sd=None,
+                         interval=1,
                          level_scale=1e-1)]
 
+    nsamples = 100000
+    print(f"Now generating {nsamples} samples from all algorithms. Please wait...")
     burnin = 20000
     maxlag = 300
     for name, sampler in zip(sampler_names, sampler_types):
+
+        # Here we build a couple of iterators on top of one
+        # another to extract a fixed number of samples
+
+        # truncate iterator to nsamples
         results = itertools.islice(sampler, nsamples)
+        # Only extract samples, ignoring second two outputs 
         samples = itertools.starmap(lambda x, y, z: x, results)
 
         df = pd.DataFrame(samples, columns=['x1', 'x2'])
@@ -80,13 +104,13 @@ if __name__ == "__main__":
     plt.legend(sampler_names)
     plt.xlim([0, maxlag])
     # plt.savefig('autocorr1.pdf')
-    
+
     plt.figure(2)
     plt.xlabel('Lag')
     plt.ylabel('Autocorrelation x2')
     plt.legend(sampler_names)
     plt.xlim([0, maxlag])
     # plt.savefig('autocorr2.pdf')
-    
+
     plt.show()
 

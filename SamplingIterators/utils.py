@@ -6,15 +6,19 @@ def laplace_approx(initial_guess, logpost):
     """Perform the laplace approximation
     returning the MAP point and an approximation of the covariance
 
-    Inputs
-    ------
-    initial_guess: (nparam , ) array of initial parameters
-    logpost: function (param) -> log posterior
+    Parameters
+    ----------
+    initial_guess : 1-D array (nparam , ) 
+                   Array of initial parameters
+    logpost : function (param) -> float
+              log posterior
 
-    Outputs
+    Returns
     ------
-    map_point: (nparam , ) MAP of the posterior
-    cov_approx: (nparam , nparam), covariance matrix for Gaussian fit at MAP
+    map_point : 1-D array (nparam , ) 
+                MAP of the posterior
+    cov_approx: 2-D array (nparam , nparam) 
+                Covariance matrix for Gaussian fit at MAP
 
     Notes
     -----
@@ -44,7 +48,7 @@ def auto_correlation(samples):
               Array of samples whose autocorrelation we seek
 
     Returns
-    ------- 
+    -------
     Array of autocorrelations
     """
     xp = (samples - np.mean(samples)) / np.std(samples)
