@@ -20,9 +20,9 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
 
-    name='SamplingIterators',
+    name='MCMCIterators',
     version='0.0.0',
-    description='Bayesian Sampling Iterators',
+    description='Markov Chain Monte Carlo Iterators',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url=None,
@@ -31,6 +31,6 @@ setup(
     # classifiers=[
     # ]
     # keywords='sample,setuptools'
-    packages=['SamplingIterators']
+    packages=['MCMCIterators']
     
 )
