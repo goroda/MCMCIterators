@@ -1,9 +1,8 @@
-"""Compare MH, AM, DR, and DRAM on a Banana Function"""
-
+"""Compare MH, AM, DR, and DRAM on a Banana Function."""
 
 import numpy as np
 import pandas as pd
-from pandas.plotting import autocorrelation_plot
+
 # import matplotlib
 # matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -11,47 +10,83 @@ import itertools
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../SamplingIterators')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                                '../SamplingIterators')))
 
-import samplers, utils
+import samplers
+import utils
+
 
 def banana(x):
-
+    """Evaluate a banana shaped distribution."""
     if x.ndim == 1:
         x = x[np.newaxis, :]
     N, d = x.shape
     x1p = x[:, 0]
     x2p = x[:, 1] + (np.square(x[:, 0]) + 1)
-    xp = np.concatenate((x1p[:, np.newaxis], x2p[:,np.newaxis ]),
-                        axis=1)
-    sigma = np.array ([[1, 0.9], [0.9, 1]])
+    xp = np.concatenate((x1p[:, np.newaxis], x2p[:, np.newaxis]), axis=1)
+    sigma = np.array([[1, 0.9], [0.9, 1]])
     mu = np.array([0, 0])
     preexp = 1.0 / (2.0 * np.pi)**(d/2) / np.linalg.det(sigma)**0.5
-    diff = xp - np.tile(mu[np.newaxis , :], (N, 1))
-    sol = np.linalg.solve(sigma , diff.T)
-    inexp = np.einsum("ij ,ij ->j",diff.T, sol)
+    diff = xp - np.tile(mu[np.newaxis, :], (N, 1))
+    sol = np.linalg.solve(sigma, diff.T)
+    inexp = np.einsum("ij ,ij ->j", diff.T, sol)
     return np.log(preexp) - 0.5 * inexp
 
 
 if __name__ == "__main__":
 
-    print("Hello World")
+    # If using the Laplace Approximation
+    # x_rand = np.random.randn(2)
+    # x0, cov0 = utils.laplace_approx(x_rand, banana)
+    
+    # Results from Laplace should be close to below
+    x0 = np.array([0, -1.0])
+    cov0 = np.array([[1.0, 0.9],
+                     [0.9, 1.0]])
 
-    x_rand = np.random.randn(2)
-    x0, cov0 = utils.laplace_approx(x_rand, banana)
-    cov_opt = 2.4**2/2 * cov0
-    nsamples = 20000
-    
-    mh = samplers.RandomWalkGauss(banana, x0, cov_opt)
+    nsamples = 100000
 
-    results = itertools.islice(mh, nsamples)
-    samples = itertools.starmap(lambda x,y,z: x, results)
-    
-    df = pd.DataFrame(samples, columns=['x1', 'x2'])
+    sampler_names = ['MH', 'Adaptive', 'Delayed Rejection', 'DRAM']
+    sampler_types = [samplers.RandomWalkGauss(banana, x0, 2*cov0),
+                     samplers.AdaptiveMetropolisGauss(banana, x0, 2*cov0,
+                                                      adapt_start=10),
+                     samplers.DelayedRejectionGauss(banana, x0, 2*cov0,
+                                                    level_scale=1e-1),
+                     samplers.DelayedRejectionAdaptiveMetropolis(
+                         banana, x0, 2*cov0,
+                         adapt_start=10,
+                         level_scale=1e-1)]
 
-    # df.plot()
-    # autocorrelation_plot(df['x1'])
-    plt.savefig('samples.pdf')
-    # plt.show()
+    burnin = 20000
+    maxlag = 300
+    for name, sampler in zip(sampler_names, sampler_types):
+        results = itertools.islice(sampler, nsamples)
+        samples = itertools.starmap(lambda x, y, z: x, results)
+
+        df = pd.DataFrame(samples, columns=['x1', 'x2'])
+
+        corr = utils.auto_correlation(df['x1'].iloc[burnin:].to_numpy())
+        plt.figure(1)
+        plt.plot(corr[:maxlag])
+
+        corr = utils.auto_correlation(df['x2'].iloc[burnin:].to_numpy())
+        plt.figure(2)
+        plt.plot(corr[:maxlag])
+
+    plt.figure(1)
+    plt.xlabel('Lag')
+    plt.ylabel('Autocorrelation x1')
+    plt.legend(sampler_names)
+    plt.xlim([0, maxlag])
+    # plt.savefig('autocorr1.pdf')
     
+    plt.figure(2)
+    plt.xlabel('Lag')
+    plt.ylabel('Autocorrelation x2')
+    plt.legend(sampler_names)
+    plt.xlim([0, maxlag])
+    # plt.savefig('autocorr2.pdf')
     
+    plt.show()
+

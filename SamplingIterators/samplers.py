@@ -129,7 +129,7 @@ class RandomWalkGauss(MetropolisHastingsSym):
     
 class DelayedRejectionGauss(RandomWalkGauss):
 
-    def __init__(self, logpdf, initial_sample, initial_cov, level_scale):
+    def __init__(self, logpdf, initial_sample, initial_cov, level_scale=1e-1):
         RandomWalkGauss.__init__(self, logpdf, initial_sample, initial_cov)
         self.gamma = level_scale
                 
@@ -178,55 +178,52 @@ class DelayedRejectionGauss(RandomWalkGauss):
                     else:
                         return (self.current_sample, self.current_logpdf, False)
 
+
 class AdaptiveMetropolisGauss(RandomWalkGauss):
-    """Adaptive Metropolis with Gaussian proposal sampler"""
+    """Adaptive Metropolis with Gaussian proposal sampler."""
 
     def init_adaptive(self, adapt_start, initial_sample, eps, sd, interval):
+        """Initialize parameters for adaptive metropolis."""
         self.k = 0
         if adapt_start is not None:
             self.adapt_start = adapt_start
         else:
             self.adapt_start = len(initial_sample)
 
-        self.mean        = copy.deepcopy(initial_sample)
-        self.epsI        = eps * np.eye(self.dim)
+        self.mean = copy.deepcopy(initial_sample)
+        self.epsI = eps * np.eye(self.dim)
         if sd is not None:
             self.sd = sd
         else:
             self.sd = 2.4**2 / self.dim
         self.S = np.zeros(self.dim)
         self.interval = interval
-        
-    def __init__(self, logpdf, initial_sample, initial_cov, adapt_start,
-                 eps=1e-8, sd=None, interval=1):
 
-        RandomWalkGauss.__init__(self,logpdf, initial_sample, initial_cov)
+    def __init__(self, logpdf, initial_sample, initial_cov, adapt_start=None,
+                 eps=1e-8, sd=None, interval=1):
+        """Initialize."""
+        RandomWalkGauss.__init__(self, logpdf, initial_sample, initial_cov)
         self.init_adaptive(adapt_start, initial_sample, eps, sd, interval)
 
-        
     def compute_update_mean(self, new_pt):
-        """Recursively compute the updated mean
-        Compute \bar{x}^k
-        """
+        """Recursively compute the updated mean."""
         new_mean = (self.mean * self.k + new_pt) / (self.k+1)
         return new_mean
 
     def update_cov_and_mean(self, new_pt):
-        """
-        Compute Sk+1
-        """
+        """Recursively update hte covariance and mean."""
         next_mean = self.compute_update_mean(new_pt)
-        
+
         t1 = self.k * np.outer(self.mean, self.mean) - \
             (self.k + 1) * np.outer(next_mean, next_mean) + \
             np.outer(new_pt, new_pt) + self.epsI 
         t1 *= self.sd / self.k 
         self.S = (self.k - 1)/self.k * self.S + t1
         self.mean = next_mean
-        
+
     def process_new_sample(self, sample, logpdf_val):
+        """Update internal data with new sample."""
         self.k += 1
-        
         self.update_cov_and_mean(sample)
 
         # if we are beyond adapt_start, then use new covariance
@@ -236,12 +233,19 @@ class AdaptiveMetropolisGauss(RandomWalkGauss):
             self.cov_chol = np.linalg.cholesky(self.S)
 
 
-class DelayedRejectionAdaptiveMetropolis(DelayedRejectionGauss, AdaptiveMetropolisGauss):
-    
+class DelayedRejectionAdaptiveMetropolis(DelayedRejectionGauss,
+                                         AdaptiveMetropolisGauss):
+    """Delayed Rejection Adaptive Metropolis."""
+
     def __init__(self, logpdf, initial_sample, initial_cov, adapt_start=None,
                  eps=1e-8, sd=None, interval=1, level_scale=1e-1):
-        DelayedRejectionGauss.__init__(self, logpdf, initial_sample, initial_cov, level_scale=level_scale)
-        AdaptiveMetropolisGauss.init_adaptive(self, adapt_start, initial_sample, eps, sd, interval)        
+        """Initialize."""
+        DelayedRejectionGauss.__init__(self, logpdf, initial_sample,
+                                       initial_cov, level_scale=level_scale)
+        AdaptiveMetropolisGauss.init_adaptive(self, adapt_start,
+                                              initial_sample,
+                                              eps, sd, interval)
+
         
 if __name__ == "__main__":
     # things below are just tests during development
