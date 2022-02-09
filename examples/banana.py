@@ -11,7 +11,7 @@ import itertools
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                '../SamplingIterators')))
+                                                '../MCMCIterators')))
 
 import samplers
 import utils
@@ -72,11 +72,11 @@ if __name__ == "__main__":
                          eps=1e-8,
                          sd=None,
                          interval=1,
-                         level_scale=1e-1)]
+                         level_scale=1e-2)]
 
-    nsamples = 100000
+    nsamples = 50000
     print(f"Now generating {nsamples} samples from all algorithms. Please wait...")
-    burnin = 20000
+    burnin = 10000
     maxlag = 300
     for name, sampler in zip(sampler_names, sampler_types):
 

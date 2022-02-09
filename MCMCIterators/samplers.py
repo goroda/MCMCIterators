@@ -226,7 +226,8 @@ class DelayedRejectionGauss(RandomWalkGauss):
                                               np.linalg.solve(self.cov, diff1))
 
                 # print("a2 = ", a2)
-                a2 = accept_reject + gauss_pdf_num - gauss_pdf_den + \
+                a2 = second_proposed_pdf - self.current_logpdf + \
+                    gauss_pdf_num - gauss_pdf_den + \
                     np.log(1.0 - a2) - \
                     np.log(1 - min(1, np.exp(accept_reject)))
 

@@ -124,7 +124,7 @@ class TestDelayedRejectionGaussSampler(unittest.TestCase):
                                                                  mean=cls.mean,
                                                                  cov=cls.cov)
         
-        mh = samplers.DelayedRejectionGauss(logpdf_f, cls.mean, 0.2*np.eye(2), level_scale=1e-1)
+        mh = samplers.DelayedRejectionGauss(logpdf_f, cls.mean, 0.2*np.eye(2), level_scale=1e-2)
         mh2 = itertools.starmap(lambda x,y,z: x, itertools.islice(mh, cls.num_samples))
         cls.df = pd.DataFrame(mh2)
 
@@ -147,7 +147,7 @@ class TestDelayedRejectionGaussSampler(unittest.TestCase):
         self.assertAlmostEqual(self.cov[0,1], cov[0][1], places=1)
 
 
-class TestDelayedRejectionGaussSampler(unittest.TestCase):
+class TestDelayedRejectionAdaptiveMetropolisGaussSampler(unittest.TestCase):
 
     @classmethod    
     def setUpClass(cls):    
@@ -163,7 +163,7 @@ class TestDelayedRejectionGaussSampler(unittest.TestCase):
                                                          adapt_start=10,
                                                          eps=1e-6, sd=2.4**2 / cls.cov.shape[0],
                                                          interval=10,
-                                                         level_scale=1e-1)
+                                                         level_scale=1e-2)
         mh2 = itertools.starmap(lambda x,y,z: x, itertools.islice(mh, cls.num_samples))
         cls.df = pd.DataFrame(mh2)
 
