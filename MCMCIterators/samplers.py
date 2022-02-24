@@ -124,7 +124,54 @@ class MetropolisHastings(SequentialSampler, abc.ABC):
         """Take a step."""
         raise NotImplementedError("Should implement step")
 
+class HMC(MetropolisHastings):
+    """
+    Hamiltonian Monte Carlo Sampler
+    """
+    def __init__(self, logpdf, initial_sample, grad_logpdf, step_size, num_steps):
+        
+        super().__init__(logpdf, initial_sample)
+        self.grad_logpdf = grad_logpdf
+        self.step_size = step_size
+        self.num_steps = num_steps
 
+    def leapfrog(self, q, p, step):
+        pn = p + 0.5 * step * self.grad_logpdf(q)
+        qn = q + step * pn
+        pn = pn + 0.5 * step * self.grad_logpdf(qn)
+        return qn, pn
+    
+    def hamiltonian(self, q, p):
+        return self.logpdf(q) - 0.5 * np.dot(p, p)
+
+    def propose(self):
+
+        q = np.copy(self.current_sample)        
+        r0 = np.random.randn(self.dim)
+        r = np.copy(r0)
+
+        for ii in range(self.num_steps):
+            q, r = self.leapfrog(q, r, self.step_size)
+
+        return q, r, r0
+
+    def process_new_sample(self, sample, logpdf):
+        pass
+    
+    def step(self, qin):
+
+        q, r, r0 = self.propose()
+        H0 = self.current_logpdf - 0.5 * np.dot(r0, r0)
+        prop_logpdf = self.logpdf(q)
+        H1 = prop_logpdf - 0.5 * np.dot(r, r)
+
+        u = np.log(np.random.rand(1)[0])
+        if u < H1 - H0:
+            return (proposed_sample, prop_pdf, True)
+        else:
+            return (self.current_sample, self.current_logpdf, False)
+
+    
 class MetropolisHastingsSym(MetropolisHastings, abc.ABC):
     """
     Symmetric Metropolis Hastings.
