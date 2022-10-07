@@ -326,7 +326,7 @@ class AdaptiveMetropolisGauss(RandomWalkGauss):
             self.sd = sd
         else:
             self.sd = 2.4**2 / self.dim
-        self.S = np.zeros(self.dim)
+        self.S = np.zeros((self.dim, self.dim))
         self.interval = interval
 
     def __init__(self, logpdf, initial_sample, initial_cov, adapt_start=None,
