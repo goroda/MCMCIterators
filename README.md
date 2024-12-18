@@ -41,13 +41,17 @@ Finally, we setup the DRAM sampler, here I expose all the parameters. In practic
 
 This is now a simple iterator. So you can iterate forever with
 
-    for sample, logpdf, accepted_bool in sampler:
+    for sample, logpdf, accepted_bool, state in sampler:
         print(f"Sample: {sample}")
         print(f"\t Logpdf: {logpdf}")
         print(f"\t Accepted? -> {accepted_bool}")
+        print(f"\t Proposed sample: {state.proposed_samples[0]}")
+        print(f"\t Proposed logpdf: {state.proposed_logpdfs[0]}")
+        print(f"\t Proposal covariance: {state.cov}")
         print("\n")
         
-Notice that the sampler outputs three things: the next sample, the evaluation of the logpdf, and whether or not this is a new sample that was accepted (True) or an old sample wjere a new sample was proposed, but rejected (False)
+Notice that the sampler outputs for things: the next sample, the evaluation of the logpdf, whether or not this is a new sample that was accepted (True) or an old sample where a new sample was proposed, but rejected (False), and the sampler state.
+This last variable in turn contains the proposed sample (or samples, in the case of delayed-rejection methods), the proposed logpdf(s), and the covariance of the proposal distribution.
 
 One can use this iterator in conjuction with any itertools functions. For instance the following function turns this iterator into one with a finite number of samples (100)
 
@@ -55,7 +59,7 @@ One can use this iterator in conjuction with any itertools functions. For instan
     
 One can also extract just the samples, rather than the logpdf values and whether or not it is an accepted sample via
 
-    sampler = itertools.starmap(lambda x, y, z: x, sampler)
+    sampler = itertools.starmap(lambda x, y, z, s: x, sampler)
     
 Finally, one could put the samples into a pandas dataframe as follows
 

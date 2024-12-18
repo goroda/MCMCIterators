@@ -53,7 +53,7 @@ class TestRandomWalkGaussSampler(unittest.TestCase):
                                                                  mean=cls.mean,
                                                                  cov=cls.cov)
         mh = samplers.RandomWalkGauss(logpdf_f, cls.mean, cls.cov*0.8)
-        mh2 = itertools.starmap(lambda x,y,z: x, itertools.islice(mh, cls.num_samples))
+        mh2 = itertools.starmap(lambda x,y,z,s: x, itertools.islice(mh, cls.num_samples))
         cls.df = pd.DataFrame(mh2)
         
     def test_count(self):
@@ -91,7 +91,7 @@ class TestAdaptiveMetropolisGaussSampler(unittest.TestCase):
                                               adapt_start = adapt_start,
                                               eps=1e-6, sd=2.4**2 / cls.cov.shape[0],
                                               interval=interval)
-        mh2 = itertools.starmap(lambda x,y,z: x, itertools.islice(mh, cls.num_samples))
+        mh2 = itertools.starmap(lambda x,y,z,s: x, itertools.islice(mh, cls.num_samples))
         cls.df = pd.DataFrame(mh2)
         
     def test_count(self):
@@ -125,7 +125,7 @@ class TestDelayedRejectionGaussSampler(unittest.TestCase):
                                                                  cov=cls.cov)
         
         mh = samplers.DelayedRejectionGauss(logpdf_f, cls.mean, 0.2*np.eye(2), level_scale=1e-2)
-        mh2 = itertools.starmap(lambda x,y,z: x, itertools.islice(mh, cls.num_samples))
+        mh2 = itertools.starmap(lambda x,y,z,s: x, itertools.islice(mh, cls.num_samples))
         cls.df = pd.DataFrame(mh2)
 
     def test_count(self):
@@ -164,7 +164,7 @@ class TestDelayedRejectionAdaptiveMetropolisGaussSampler(unittest.TestCase):
                                                          eps=1e-6, sd=2.4**2 / cls.cov.shape[0],
                                                          interval=10,
                                                          level_scale=1e-2)
-        mh2 = itertools.starmap(lambda x,y,z: x, itertools.islice(mh, cls.num_samples))
+        mh2 = itertools.starmap(lambda x,y,z,s: x, itertools.islice(mh, cls.num_samples))
         cls.df = pd.DataFrame(mh2)
 
     def test_count(self):

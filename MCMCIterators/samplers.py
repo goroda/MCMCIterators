@@ -2,8 +2,13 @@
 import abc
 import numpy as np
 import copy
+from collections import namedtuple
 
 # StopIteration # <-- To stop an iteration inside next
+
+"""Result type"""
+Sample = namedtuple("Sample", ['sample', 'logpdf', 'accepted_bool', 'info'])
+SamplerState = namedtuple("SamplerState", ["cov", "proposed_samples", "proposed_logpdfs"])
 
 def sample_gauss(mean, cov_chol):
     """Sample a gaussian with given mean and covariance square root."""
@@ -166,10 +171,12 @@ class HMC(MetropolisHastings):
         H1 = prop_logpdf - 0.5 * np.dot(r, r)
 
         u = np.log(np.random.rand(1)[0])
+
+        state = SamplerState(proposed_samples=[q], proposed_logpdfs=[prop_logpdf], cov = None)
         if u < H1 - H0:
-            return (proposed_sample, prop_pdf, True)
+            return Sample(q, prop_logpdf, True, state)
         else:
-            return (self.current_sample, self.current_logpdf, False)
+            return Sample(self.current_sample, self.current_logpdf, False, state)
 
     
 class MetropolisHastingsSym(MetropolisHastings, abc.ABC):
@@ -194,14 +201,15 @@ class MetropolisHastingsSym(MetropolisHastings, abc.ABC):
         prop_pdf = self.logpdf(proposed_sample)
 
         accept_reject = prop_pdf - self.current_logpdf
+        state = SamplerState(proposed_samples=[proposed_sample], proposed_logpdfs=[prop_pdf], cov = None)
         if accept_reject > 0:
-            return (proposed_sample, prop_pdf, True)
+            return Sample(proposed_sample, prop_pdf, True, state)
         else:
             u = np.log(np.random.rand(1)[0])
             if u < accept_reject:
-                return (proposed_sample, prop_pdf, True)
+                return Sample(proposed_sample, prop_pdf, True, state)
             else:
-                return (self.current_sample, self.current_logpdf, False)
+                return Sample(self.current_sample, self.current_logpdf, False, state)
 
 
 class RandomWalkGauss(MetropolisHastingsSym):
@@ -221,7 +229,6 @@ class RandomWalkGauss(MetropolisHastingsSym):
     def process_new_sample(self, sample, logpdf):
         """Don't process the sample."""
         pass
-
 
 class DelayedRejectionGauss(RandomWalkGauss):
     """Delayed Rejection Metropolis Hastings."""
@@ -249,19 +256,22 @@ class DelayedRejectionGauss(RandomWalkGauss):
         prop_pdf = self.logpdf(proposed_sample)
 
         accept_reject = prop_pdf - self.current_logpdf
+        state = SamplerState(proposed_samples=[proposed_sample], proposed_logpdfs=[prop_pdf], cov = self.cov)
         if accept_reject > 0:
-            return (proposed_sample, prop_pdf, True)
+            return Sample(proposed_sample, prop_pdf, True, state)
         else:
             u = np.log(np.random.rand(1)[0])
             if u < accept_reject:
-                return (proposed_sample, prop_pdf, True)
+                return Sample(proposed_sample, prop_pdf, True, state)
             else:
                 second_proposed_sample = self.propose(1)
                 second_proposed_pdf = self.logpdf(second_proposed_sample)
+                state.proposed_samples.append(second_proposed_sample)
+                state.proposed_logpdfs.append(second_proposed_pdf)
 
                 a2 = min(1, np.exp(prop_pdf - second_proposed_pdf))
                 if a2 > 1.0-1e-15:  # reject
-                    return (self.current_sample, self.current_logpdf, False)
+                    return Sample(self.current_sample, self.current_logpdf, False, state)
 
                 diff2 = second_proposed_sample - proposed_sample
                 # change to use cov_chol
@@ -279,15 +289,13 @@ class DelayedRejectionGauss(RandomWalkGauss):
                     np.log(1 - min(1, np.exp(accept_reject)))
 
                 if a2 > 0:
-                    return (second_proposed_sample, second_proposed_pdf, True)
+                    return Sample(second_proposed_sample, second_proposed_pdf, True, state)
                 else:
                     u = np.log(np.random.rand(1)[0])
                     if (u < accept_reject):
-                        return (second_proposed_sample, second_proposed_pdf,
-                                True)
+                        return Sample(second_proposed_sample, second_proposed_pdf, True, state)
                     else:
-                        return (self.current_sample, self.current_logpdf,
-                                False)
+                        return Sample(self.current_sample, self.current_logpdf, False, state)
 
 
 class AdaptiveMetropolisGauss(RandomWalkGauss):
@@ -414,7 +422,7 @@ if __name__ == "__main__":
     # for sample in mh:
     #     print(sample)
 
-    mh2 = itertools.starmap(lambda x, y, z: x, itertools.islice(mh, num_samples))
+    mh2 = itertools.starmap(lambda x, y, z, s: x, itertools.islice(mh, num_samples))
 
     df = pd.DataFrame(mh2)
     arr = df.to_numpy()
