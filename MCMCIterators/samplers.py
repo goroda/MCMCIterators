@@ -268,8 +268,8 @@ class DelayedRejectionGauss(RandomWalkGauss):
             # accept if proposal is greater than current logpdf
             return (second_proposed_sample, second_proposed_pdf, True)
 
-        if second_proposed_pdf < prop_pdf:
-            # second proposal is even worse than the first
+        if second_proposed_pdf < prop_pdf or not np.isfinite(second_proposed_pdf):
+            # second proposal is even worse than the first or is non-finite
             return (self.current_sample, self.current_logpdf, False)
 
         # Here, we know that prop_pdf <= second_proposed_pdf < self.current_logpdf
