@@ -1,9 +1,11 @@
 """Collection of Markov Chain Monte Carlo Algorithms as Iterators."""
+
 import abc
 import numpy as np
 import copy
 
 # StopIteration # <-- To stop an iteration inside next
+
 
 def sample_gauss(mean, cov_chol):
     """Sample a gaussian with given mean and covariance square root."""
@@ -124,12 +126,13 @@ class MetropolisHastings(SequentialSampler, abc.ABC):
         """Take a step."""
         raise NotImplementedError("Should implement step")
 
+
 class HMC(MetropolisHastings):
     """
     Hamiltonian Monte Carlo Sampler
     """
+
     def __init__(self, logpdf, initial_sample, grad_logpdf, step_size, num_steps):
-        
         super().__init__(logpdf, initial_sample)
         self.grad_logpdf = grad_logpdf
         self.step_size = step_size
@@ -140,13 +143,12 @@ class HMC(MetropolisHastings):
         qn = q + step * pn
         pn = pn + 0.5 * step * self.grad_logpdf(qn)
         return qn, pn
-    
+
     def hamiltonian(self, q, p):
         return self.logpdf(q) - 0.5 * np.dot(p, p)
 
     def propose(self):
-
-        q = np.copy(self.current_sample)        
+        q = np.copy(self.current_sample)
         r0 = np.random.randn(self.dim)
         r = np.copy(r0)
 
@@ -157,9 +159,8 @@ class HMC(MetropolisHastings):
 
     def process_new_sample(self, sample, logpdf):
         pass
-    
-    def step(self, qin):
 
+    def step(self, qin):
         q, r, r0 = self.propose()
         H0 = self.current_logpdf - 0.5 * np.dot(r0, r0)
         prop_logpdf = self.logpdf(q)
@@ -171,7 +172,7 @@ class HMC(MetropolisHastings):
         else:
             return (self.current_sample, self.current_logpdf, False)
 
-    
+
 class MetropolisHastingsSym(MetropolisHastings, abc.ABC):
     """
     Symmetric Metropolis Hastings.
@@ -240,54 +241,67 @@ class DelayedRejectionGauss(RandomWalkGauss):
         if level == 0:
             return super().propose()
         else:
-            return sample_gauss(self.current_sample,
-                                np.sqrt(self.gamma) * self.cov_chol)
+            return sample_gauss(
+                self.current_sample, np.sqrt(self.gamma) * self.cov_chol
+            )
 
     def step(self):
         """Generate the next sample."""
         proposed_sample = self.propose(0)
         prop_pdf = self.logpdf(proposed_sample)
 
+        # Compute log(acceptance probability)
         accept_reject = prop_pdf - self.current_logpdf
-        if accept_reject > 0:
+        if accept_reject >= 0:
             return (proposed_sample, prop_pdf, True)
+
+        u = np.log(np.random.rand(1)[0])
+        if u < accept_reject:
+            return (proposed_sample, prop_pdf, True)
+
+        # Propose a second sample
+        # At this point we know that prop_pdf <= self.current_logpdf
+        second_proposed_sample = self.propose(1)
+        second_proposed_pdf = self.logpdf(second_proposed_sample)
+
+        if second_proposed_pdf >= self.current_logpdf:
+            # accept if proposal is greater than current logpdf
+            return (second_proposed_sample, second_proposed_pdf, True)
+
+        if second_proposed_pdf < prop_pdf:
+            # second proposal is even worse than the first
+            return (self.current_sample, self.current_logpdf, False)
+
+        # Here, we know that prop_pdf <= second_proposed_pdf < self.current_logpdf
+        assert prop_pdf <= second_proposed_pdf < self.current_logpdf, (
+            f"DelayedRejection: pdfs in wrong order ({prop_pdf=}, {second_proposed_pdf=}, {self.current_logpdf=})"
+        )
+
+        # Accept with probability (p(y1) - p(y0)) / (p(x) - p(y0))
+        # log(acceptance prob) = log(p(y1) - p(y0)) - log(p(x) - p(y0))
+        # In both cases, argument of log is positive
+
+        # We can write log(x - y) = h(log(x), log(y)) for all x > y
+        # where h(x,y) = x + log(1 - exp(y-x))
+        diff_1 = prop_pdf - second_proposed_pdf  # logp(y0) - logp(x)
+        diff_2 = accept_reject  # logp(y0) - logp(x)
+
+        # diff_1 and diff_2 are both negative, so the exp results in a value in [0,1)
+        assert diff_1 < 0, f"DelayedRejection: {diff_1=} (should be negative)"
+        assert diff_2 < 0, f"DelayedRejection: {diff_2=} (should be negative)"
+
+        # if diffs are large in magnitude, accept_reject_2 = second_proposed_pdf - self.current_logpdf
+        # we explicitly ignore underflows as these are likely to happen and we don't want to pollute the logs
+        with np.errstate(under="ignore"):
+            num = second_proposed_pdf + np.log(1 - np.exp(diff_1))
+            den = self.current_logpdf + np.log(1 - np.exp(diff_2))
+
+        accept_reject_2 = num - den
+        u = np.log(np.random.rand(1)[0])
+        if u < accept_reject_2:
+            return (second_proposed_sample, second_proposed_pdf, True)
         else:
-            u = np.log(np.random.rand(1)[0])
-            if u < accept_reject:
-                return (proposed_sample, prop_pdf, True)
-            else:
-                second_proposed_sample = self.propose(1)
-                second_proposed_pdf = self.logpdf(second_proposed_sample)
-
-                a2 = min(1, np.exp(prop_pdf - second_proposed_pdf))
-                if a2 > 1.0-1e-15:  # reject
-                    return (self.current_sample, self.current_logpdf, False)
-
-                diff2 = second_proposed_sample - proposed_sample
-                # change to use cov_chol
-                gauss_pdf_num = -0.5 * np.dot(diff2,
-                                              np.linalg.solve(self.cov, diff2))
-
-                diff1 = self.current_sample - proposed_sample
-                gauss_pdf_den = -0.5 * np.dot(diff1,
-                                              np.linalg.solve(self.cov, diff1))
-
-                # print("a2 = ", a2)
-                a2 = second_proposed_pdf - self.current_logpdf + \
-                    gauss_pdf_num - gauss_pdf_den + \
-                    np.log(1.0 - a2) - \
-                    np.log(1 - min(1, np.exp(accept_reject)))
-
-                if a2 > 0:
-                    return (second_proposed_sample, second_proposed_pdf, True)
-                else:
-                    u = np.log(np.random.rand(1)[0])
-                    if (u < accept_reject):
-                        return (second_proposed_sample, second_proposed_pdf,
-                                True)
-                    else:
-                        return (self.current_sample, self.current_logpdf,
-                                False)
+            return (self.current_sample, self.current_logpdf, False)
 
 
 class AdaptiveMetropolisGauss(RandomWalkGauss):
@@ -329,26 +343,37 @@ class AdaptiveMetropolisGauss(RandomWalkGauss):
         self.S = np.zeros((self.dim, self.dim))
         self.interval = interval
 
-    def __init__(self, logpdf, initial_sample, initial_cov, adapt_start=None,
-                 eps=1e-8, sd=None, interval=1):
+    def __init__(
+        self,
+        logpdf,
+        initial_sample,
+        initial_cov,
+        adapt_start=None,
+        eps=1e-8,
+        sd=None,
+        interval=1,
+    ):
         """Initialize. See *init_adaptive* for input description"""
         RandomWalkGauss.__init__(self, logpdf, initial_sample, initial_cov)
         self.init_adaptive(adapt_start, initial_sample, eps, sd, interval)
 
     def compute_update_mean(self, new_pt):
         """Recursively compute the updated mean."""
-        new_mean = (self.mean * self.k + new_pt) / (self.k+1)
+        new_mean = (self.mean * self.k + new_pt) / (self.k + 1)
         return new_mean
 
     def update_cov_and_mean(self, new_pt):
         """Recursively update hte covariance and mean."""
         next_mean = self.compute_update_mean(new_pt)
 
-        t1 = self.k * np.outer(self.mean, self.mean) - \
-            (self.k + 1) * np.outer(next_mean, next_mean) + \
-            np.outer(new_pt, new_pt) + self.epsI 
-        t1 *= self.sd / self.k 
-        self.S = (self.k - 1)/self.k * self.S + t1
+        t1 = (
+            self.k * np.outer(self.mean, self.mean)
+            - (self.k + 1) * np.outer(next_mean, next_mean)
+            + np.outer(new_pt, new_pt)
+            + self.epsI
+        )
+        t1 *= self.sd / self.k
+        self.S = (self.k - 1) / self.k * self.S + t1
         self.mean = next_mean
 
     def process_new_sample(self, sample, logpdf_val):
@@ -363,18 +388,29 @@ class AdaptiveMetropolisGauss(RandomWalkGauss):
             self.cov_chol = np.linalg.cholesky(self.S)
 
 
-class DelayedRejectionAdaptiveMetropolis(DelayedRejectionGauss,
-                                         AdaptiveMetropolisGauss):
+class DelayedRejectionAdaptiveMetropolis(
+    DelayedRejectionGauss, AdaptiveMetropolisGauss
+):
     """Delayed Rejection Adaptive Metropolis."""
 
-    def __init__(self, logpdf, initial_sample, initial_cov, adapt_start=None,
-                 eps=1e-8, sd=None, interval=1, level_scale=1e-1):
+    def __init__(
+        self,
+        logpdf,
+        initial_sample,
+        initial_cov,
+        adapt_start=None,
+        eps=1e-8,
+        sd=None,
+        interval=1,
+        level_scale=1e-1,
+    ):
         """Initialize."""
-        DelayedRejectionGauss.__init__(self, logpdf, initial_sample,
-                                       initial_cov, level_scale=level_scale)
-        AdaptiveMetropolisGauss.init_adaptive(self, adapt_start,
-                                              initial_sample,
-                                              eps, sd, interval)
+        DelayedRejectionGauss.__init__(
+            self, logpdf, initial_sample, initial_cov, level_scale=level_scale
+        )
+        AdaptiveMetropolisGauss.init_adaptive(
+            self, adapt_start, initial_sample, eps, sd, interval
+        )
 
 
 if __name__ == "__main__":
@@ -391,8 +427,7 @@ if __name__ == "__main__":
 
     print("Metropolis Hastings")
 
-    cov = np.array([[1.0, 0.3],
-                    [0.3, 2.0]])
+    cov = np.array([[1.0, 0.3], [0.3, 2.0]])
     chol = np.linalg.cholesky(cov)
     # print(np.dot(chol, chol.T))
     # exit(1)
@@ -406,10 +441,16 @@ if __name__ == "__main__":
     #                              interval=10);
 
     # mh = DelayedRejectionGauss(logpdf_f, mean, 0.2*np.eye(2), 1e-1)
-    mh = DelayedRejectionAdaptiveMetropolis(logpdf_f, mean, 0.2*np.eye(2),
-                                            adapt_start=10,
-                                            eps=1e-6, sd=2.4**2 / cov.shape[0],
-                                            interval=10, level_scale=1e-1)
+    mh = DelayedRejectionAdaptiveMetropolis(
+        logpdf_f,
+        mean,
+        0.2 * np.eye(2),
+        adapt_start=10,
+        eps=1e-6,
+        sd=2.4**2 / cov.shape[0],
+        interval=10,
+        level_scale=1e-1,
+    )
     # exit(1)
     # for sample in mh:
     #     print(sample)
