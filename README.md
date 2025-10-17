@@ -18,7 +18,7 @@ First you construct a function to evaluate the logpdf of a shifted and skewed Ga
 
     def gauss_logpdf(x):
         cov = np.array([[1.0, 0.2], 
-                         0.2, 2.0])
+                        [0.2, 2.0]])
         mean = np.array([1.0, 2.0])
         
         diff = x - mean
@@ -33,9 +33,9 @@ Next we setup the sampler. For the initial sample we will use a zero vector and 
                          
 Finally, we setup the DRAM sampler, here I expose all the parameters. In practice you can use the defaults.
     
-    sampler = DelayedRejectionAdaptiveMetropolis(gauss_logpdf, init_sample, init_cov
+    sampler = DelayedRejectionAdaptiveMetropolis(gauss_logpdf, init_sample, init_cov,
                                                  adapt_start=10,
-                                                 eps=1e-6, sd=None
+                                                 eps=1e-6, sd=None,
                                                  interval=1, level_scale=1e-1)
 
 
